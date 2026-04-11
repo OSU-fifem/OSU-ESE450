@@ -1,0 +1,12 @@
+Technology,Low,High
+Nuclear (New Build),0.141,0.221
+Solar PV (Residential Rooftop),0.122,0.284
+Gas Peaking,0.11,0.228
+Wind (Offshore),0.074,0.139
+Coal,0.068,0.166
+Geothermal,0.064,0.106
+Solar PV + Storage (Utility),0.06,0.21
+Gas Combined Cycle,0.045,0.108
+Wind (Onshore) + Storage,0.045,0.133
+Solar PV (Utility-Scale),0.029,0.092
+Wind (Onshore),0.027,0.073
