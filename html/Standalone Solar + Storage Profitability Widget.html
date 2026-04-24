@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Standalone Solar vs. Storage Profitability Explorer</title>
+    <style>
+        body { font-family: system-ui, -apple-system, sans-serif; max-width: 700px; margin: 2rem auto; padding: 1rem; color: #333; line-height: 1.5; }
+        .controls { background: #f4f4f5; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border: 1px solid #e4e4e7; }
+        .control-group { margin-bottom: 1.5rem; }
+        .control-group:last-child { margin-bottom: 0; }
+        label { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 0.5rem; }
+        input[type="range"] { width: 100%; cursor: pointer; }
+        .results-container { display: flex; gap: 1.5rem; }
+        .result-card { flex: 1; border: 1px solid #e4e4e7; border-radius: 8px; padding: 1.5rem; background: #fff; }
+        .result-card h3 { margin-top: 0; border-bottom: 2px solid #f4f4f5; padding-bottom: 0.5rem; font-size: 1.1rem; }
+        .metric { display: flex; justify-content: space-between; margin-bottom: 0.75rem; border-bottom: 1px dashed #eee; padding-bottom: 0.25rem; }
+        .metric-total { display: flex; justify-content: space-between; margin-top: 1.5rem; font-size: 1.2rem; font-weight: bold; }
+        .positive { color: #16a34a; }
+        .negative { color: #dc2626; }
+        .assumptions { font-size: 0.85rem; color: #666; margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #eee; }
+    </style>
+</head>
+<body>
+
+    <h2>Standalone Solar vs. Solar+Storage Profitability</h2>
+    
+    <div class="controls">
+        <div class="control-group">
+            <label>
+                <span>Midday Wholesale Price ($/MWh)</span>
+                <span id="middayVal">$10</span>
+            </label>
+            <input type="range" id="middayPrice" min="-20" max="50" value="10" step="1">
+        </div>
+        
+        <div class="control-group">
+            <label>
+                <span>Evening Peak Price ($/MWh)</span>
+                <span id="eveningVal">$150</span>
+            </label>
+            <input type="range" id="eveningPrice" min="50" max="300" value="150" step="1">
+        </div>
+        
+        <div class="control-group">
+            <label>
+                <span>Percentage of Solar Energy Shifted to Evening (%)</span>
+                <span id="shiftVal">40%</span>
+            </label>
+            <input type="range" id="percentShift" min="0" max="100" value="40" step="1">
+        </div>
+    </div>
+
+    <div class="results-container">
+        <div class="result-card">
+            <h3>Standalone Solar</h3>
+            <div class="metric">
+                <span>LCOE:</span>
+                <span>$35.00</span>
+            </div>
+            <div class="metric">
+                <span>Capture Price:</span>
+                <span id="solarCapture">$10.00</span>
+            </div>
+            <div class="metric-total">
+                <span>Net Margin:</span>
+                <span id="solarMargin" class="negative">-$25.00</span>
+            </div>
+        </div>
+
+        <div class="result-card">
+            <h3>Solar + Storage</h3>
+            <div class="metric">
+                <span>LCOE:</span>
+                <span id="storageLcoe">$59.00</span>
+            </div>
+            <div class="metric">
+                <span>Capture Price:</span>
+                <span id="storageCapture">$66.00</span>
+            </div>
+            <div class="metric-total">
+                <span>Net Margin:</span>
+                <span id="storageMargin" class="positive">$7.00</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="assumptions">
+        <strong>Base Assumptions:</strong> Standalone Solar LCOE is fixed at $35/MWh. The maximum battery cost adder (if 100% of power is shifted) is $60/MWh.
+    </div>
+
+    <script>
+        const inputs = {
+            midday: document.getElementById('middayPrice'),
+            evening: document.getElementById('eveningPrice'),
+            shift: document.getElementById('percentShift')
+        };
+        
+        const outputs = {
+            middayVal: document.getElementById('middayVal'),
+            eveningVal: document.getElementById('eveningVal'),
+            shiftVal: document.getElementById('shiftVal'),
+            solarCapture: document.getElementById('solarCapture'),
+            solarMargin: document.getElementById('solarMargin'),
+            storageLcoe: document.getElementById('storageLcoe'),
+            storageCapture: document.getElementById('storageCapture'),
+            storageMargin: document.getElementById('storageMargin')
+        };
+
+        const BASE_SOLAR_LCOE = 35;
+        const BATTERY_MAX_ADDER = 60;
+
+        function formatCurrency(val) {
+            return (val < 0 ? "-" : "") + "$" + Math.abs(val).toFixed(2);
+        }
+
+        function updateStyle(element, value) {
+            element.className = value >= 0 ? 'positive' : 'negative';
+        }
+
+        function calculate() {
+            const midday = parseFloat(inputs.midday.value);
+            const evening = parseFloat(inputs.evening.value);
+            const shiftDecimal = parseFloat(inputs.shift.value) / 100;
+
+            // Update Labels
+            outputs.middayVal.textContent = formatCurrency(midday);
+            outputs.eveningVal.textContent = formatCurrency(evening);
+            outputs.shiftVal.textContent = inputs.shift.value + "%";
+
+            // Standalone Solar
+            const solarCapture = midday;
+            const solarMargin = solarCapture - BASE_SOLAR_LCOE;
+            
+            outputs.solarCapture.textContent = formatCurrency(solarCapture);
+            outputs.solarMargin.textContent = formatCurrency(solarMargin);
+            updateStyle(outputs.solarMargin, solarMargin);
+
+            // Solar + Storage
+            const storageLcoe = BASE_SOLAR_LCOE + (BATTERY_MAX_ADDER * shiftDecimal);
+            const storageCapture = (midday * (1 - shiftDecimal)) + (evening * shiftDecimal);
+            const storageMargin = storageCapture - storageLcoe;
+
+            outputs.storageLcoe.textContent = formatCurrency(storageLcoe);
+            outputs.storageCapture.textContent = formatCurrency(storageCapture);
+            outputs.storageMargin.textContent = formatCurrency(storageMargin);
+            updateStyle(outputs.storageMargin, storageMargin);
+        }
+
+        // Add event listeners to all sliders
+        Object.values(inputs).forEach(input => {
+            input.addEventListener('input', calculate);
+        });
+
+        // Initial calculation
+        calculate();
+    </script>
+</body>
+</html>
